@@ -59,7 +59,7 @@ use alloc::{boxed::Box, sync::Arc, vec::Vec};
 use core::fmt;
 use core::fmt::{Debug, Formatter};
 use cranelift_control::ControlPlane;
-use target_lexicon::{triple, Architecture, PointerWidth, Triple};
+use target_lexicon::{triple, Architecture, OperatingSystem, PointerWidth, Triple};
 
 // This module is made public here for benchmarking purposes. No guarantees are
 // made regarding API stability.
@@ -423,9 +423,11 @@ impl<'a> dyn TargetIsa + 'a {
 
     /// Returns the minimum symbol alignment for this ISA.
     pub fn symbol_alignment(&self) -> u64 {
-        match self.triple().architecture {
+        match (self.triple().architecture, self.triple().operating_system) {
             // All symbols need to be aligned to at least 2 on s390x.
-            Architecture::S390x => 2,
+            (Architecture::S390x, _) => 2,
+            // AArch64 Windows requires 8 byte aligned symbols.
+            (Architecture::Aarch64(_), OperatingSystem::Windows) => 8,
             _ => 1,
         }
     }

@@ -978,6 +978,11 @@
         (symbol ExternalName)
         (rd WritableReg))
 
+       (CoffTlsGetAddr
+        (symbol BoxExternalName)
+        (rd WritableReg)
+        (tmp WritableReg))
+
        ;; An unwind pseudo-instruction.
        (Unwind
         (inst UnwindInst))
@@ -3891,6 +3896,13 @@
 (rule (macho_tls_get_addr name)
       (let ((dst WritableReg (temp_writable_reg $I64))
             (_ Unit (emit (MInst.MachOTlsGetAddr name dst))))
+        dst))
+
+(decl coff_tls_get_addr (ExternalName) Reg)
+(rule (coff_tls_get_addr name)
+      (let ((dst WritableReg (temp_writable_reg $I64))
+            (tmp WritableReg (temp_writable_reg $I64))
+            (_ Unit (emit (MInst.CoffTlsGetAddr (box_external_name name) dst tmp))))
         dst))
 
 ;; A tuple of `ProducesFlags` and `IntCC`.

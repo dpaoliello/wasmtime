@@ -937,6 +937,10 @@ fn aarch64_get_operands(inst: &mut Inst, collector: &mut impl OperandVisitor) {
             clobbers.remove(regs::xreg_preg(0));
             collector.reg_clobbers(clobbers);
         }
+        Inst::CoffTlsGetAddr { rd, tmp, .. } => {
+            collector.reg_early_def(rd);
+            collector.reg_early_def(tmp);
+        }
         Inst::Unwind { .. } => {}
         Inst::EmitIsland { .. } => {}
         Inst::DummyUse { reg } => {
@@ -1177,7 +1181,7 @@ impl MachInst for Inst {
         // We use 32-byte alignment for performance reasons, but for correctness
         // we would only need 4-byte alignment.
         FunctionAlignment {
-            minimum: 4,
+            minimum: 8,
             preferred: 32,
         }
     }
@@ -2847,6 +2851,15 @@ impl Inst {
             &Inst::MachOTlsGetAddr { ref symbol, rd } => {
                 let rd = pretty_print_reg(rd.to_reg());
                 format!("macho_tls_get_addr {}, {}", rd, symbol.display(None))
+            }
+            &Inst::CoffTlsGetAddr {
+                ref symbol,
+                rd,
+                tmp,
+            } => {
+                let rd = pretty_print_reg(rd.to_reg());
+                let tmp = pretty_print_reg(tmp.to_reg());
+                format!("coff_tls_get_addr {}, {}, {}", rd, tmp, symbol.display(None))
             }
             &Inst::Unwind { ref inst } => {
                 format!("unwind {inst:?}")

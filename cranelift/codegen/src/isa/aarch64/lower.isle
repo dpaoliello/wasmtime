@@ -2935,6 +2935,9 @@
 (rule (lower (has_type (tls_model (TlsModel.Macho)) (tls_value (symbol_value_data name _ _))))
       (macho_tls_get_addr name))
 
+(rule (lower (has_type (tls_model (TlsModel.Coff)) (tls_value (symbol_value_data name _ _))))
+      (coff_tls_get_addr name))
+
 ;;; Rules for `fvpromote_low` ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 (rule (lower (fvpromote_low val))

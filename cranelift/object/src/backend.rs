@@ -368,6 +368,7 @@ impl Module for ObjectModule {
         let align = alignment
             .max(self.isa.function_alignment().minimum.into())
             .max(self.isa.symbol_alignment());
+        assert_eq!(8, align);
         let section = if self.per_function_section {
             let symbol_name = self.object.symbol(symbol).name.clone();
             self.object
@@ -376,6 +377,7 @@ impl Module for ObjectModule {
             self.object.section_id(StandardSection::Text)
         };
         let offset = self.object.add_symbol_data(symbol, section, bytes, align);
+        assert_eq!(0, offset % 8);
 
         if !relocs.is_empty() {
             let relocs = relocs
@@ -767,6 +769,9 @@ impl ObjectModule {
                     r_pcrel: true,
                     r_length: 2,
                 },
+                object::BinaryFormat::Coff => RelocationFlags::Coff {
+                    typ: object::pe::IMAGE_REL_ARM64_PAGEBASE_REL21,
+                },
                 _ => unimplemented!("Aarch64AdrGotPage21 is not supported for this file format"),
             },
             Reloc::Aarch64Ld64GotLo12Nc => match self.object.format() {
@@ -778,7 +783,22 @@ impl ObjectModule {
                     r_pcrel: false,
                     r_length: 2,
                 },
+                object::BinaryFormat::Coff => RelocationFlags::Coff {
+                    typ: object::pe::IMAGE_REL_ARM64_PAGEOFFSET_12L,
+                },
                 _ => unimplemented!("Aarch64Ld64GotLo12Nc is not supported for this file format"),
+            },
+            Reloc::CoffAarch64TlsSecRelLo12 => match self.object.format() {
+                object::BinaryFormat::Coff => RelocationFlags::Coff {
+                    typ: object::pe::IMAGE_REL_ARM64_SECREL_LOW12A,
+                },
+                _ => unimplemented!("CoffAarch64TlsSecRelLo12 is not supported for this file format"),
+            },
+            Reloc::CoffAarch64TlsSecRelHi12 => match self.object.format() {
+                object::BinaryFormat::Coff => RelocationFlags::Coff {
+                    typ: object::pe::IMAGE_REL_ARM64_SECREL_HIGH12A,
+                },
+                _ => unimplemented!("CoffAarch64TlsSecRelHi12 is not supported for this file format"),
             },
             Reloc::S390xPCRel32Dbl => RelocationFlags::Generic {
                 kind: RelocationKind::Relative,

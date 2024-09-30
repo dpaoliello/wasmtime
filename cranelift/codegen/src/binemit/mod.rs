@@ -88,6 +88,16 @@ pub enum Reloc {
     /// This is equivalent to `R_AARCH64_LD64_GOT_LO12_NC` (312) in the  [aaelf64](https://github.com/ARM-software/abi-aa/blob/2bcab1e3b22d55170c563c3c7940134089176746/aaelf64/aaelf64.rst#static-aarch64-relocations)
     Aarch64Ld64GotLo12Nc,
 
+    /// COFF AArch64 SecRel Lo12
+    /// Equivalent to `IMAGE_REL_ARM64_SECREL_LOW12A`
+    /// See: [PE Format](https://docs.microsoft.com/en-us/windows/win32/debug/pe-format)
+    CoffAarch64TlsSecRelLo12,
+
+    /// COFF AArch64 SecRel Hi12
+    /// Equivalent to `IMAGE_REL_ARM64_SECREL_HIGH12A`
+    /// See: [PE Format](https://docs.microsoft.com/en-us/windows/win32/debug/pe-format)
+    CoffAarch64TlsSecRelHi12,
+
     /// RISC-V Call PLT: 32-bit PC-relative function call, macros call, tail (PIC)
     ///
     /// Despite having PLT in the name, this relocation is also used for normal calls.
@@ -150,6 +160,8 @@ impl fmt::Display for Reloc {
             Self::Aarch64TlsDescCall => write!(f, "Aarch64TlsDescCall"),
             Self::Aarch64AdrGotPage21 => write!(f, "Aarch64AdrGotPage21"),
             Self::Aarch64Ld64GotLo12Nc => write!(f, "Aarch64AdrGotLo12Nc"),
+            Self::CoffAarch64TlsSecRelLo12 => write!(f, "CoffAarch64TlsSecRelLo12"),
+            Self::CoffAarch64TlsSecRelHi12 => write!(f, "CoffAarch64TlsSecRelHi12"),
             Self::S390xTlsGd64 => write!(f, "TlsGd64"),
             Self::S390xTlsGdCall => write!(f, "TlsGdCall"),
         }

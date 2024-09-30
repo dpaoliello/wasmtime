@@ -1,6 +1,7 @@
 //! AArch64 ISA: binary code emission.
 
 use cranelift_control::ControlPlane;
+use isle::{ExternalName, KnownSymbol};
 
 use crate::ir::{self, types::*};
 use crate::isa::aarch64::inst::*;
@@ -3426,6 +3427,68 @@ impl MachInstEmit for Inst {
                         rtmp.to_reg(),
                         CallConv::AppleAarch64,
                     )),
+                }
+                .emit(sink, emit_info, state);
+            }
+
+            &Inst::CoffTlsGetAddr {
+                ref symbol,
+                rd,
+                tmp,
+            } => {
+                // Instructions emitted by Rust, see https://gcc.godbolt.org/z/87n6zKnYP
+                // LLVM's implementation was added in
+                // https://github.com/llvm/llvm-project/commit/cc24096d4df72caab78514e10b3f4fa4d75cf16a
+                // adrp    x8, _tls_index               ; Load the _tls_index symbol
+                // ldr     w8, [x8, :lo12:_tls_index]
+                // ldr     x9, [x18, #88]               ; Load the TLS array (offset 0x58) from the TEB (x18)
+                // ldr     x8, [x9, x8, lsl #3]         ; Offset into the TLS Array by *_tls_index by 64-bit words
+                // add     x8, x8, :secrel_hi12:<symbol>    ; Add the relative offset for the symbol
+                // add     x0, x8, :secrel_lo12:<symbol>
+                
+                // Load _tls_index
+                let tls_index = ExternalName::KnownSymbol(KnownSymbol::CoffTlsIndex);
+                sink.add_reloc(Reloc::Aarch64AdrGotPage21, &tls_index, 0);
+                Inst::Adrp { rd, off: 0 }.emit(sink, emit_info, state);
+                sink.add_reloc(Reloc::Aarch64Ld64GotLo12Nc, &tls_index, 0);
+                Inst::ULoad32 {
+                    rd,
+                    mem: AMode::reg(rd.to_reg()),
+                    flags: MemFlags::trusted(),
+                }
+                .emit(sink, emit_info, state);
+
+                // Load TLS Array from TEB.
+                Inst::ULoad64 {
+                    rd: tmp,
+                    mem: AMode::RegOffset { rn: regs::xreg(18), off: 0x58 },
+                    flags: MemFlags::trusted() }.emit(sink, emit_info, state);
+
+                // Offset into the TLS Array by *_tls_index
+                Inst::ULoad64 {
+                    rd,
+                    mem: AMode::RegScaled{ rn: tmp.to_reg(), rm: rd.to_reg() },
+                    flags: MemFlags::trusted(),
+                }
+                .emit(sink, emit_info, state);
+
+                // Offset by section-relative offset of symbol.
+                sink.add_reloc(Reloc::CoffAarch64TlsSecRelHi12, &**symbol, 0);
+                Inst::AluRRImm12 {
+                    alu_op: ALUOp::Add,
+                    size: OperandSize::Size64,
+                    rd,
+                    rn: rd.to_reg(),
+                    imm12: Imm12::maybe_from_u64(0).unwrap(),
+                }
+                .emit(sink, emit_info, state);
+                sink.add_reloc(Reloc::CoffAarch64TlsSecRelLo12, &**symbol, 0);
+                Inst::AluRRImm12 {
+                    alu_op: ALUOp::Add,
+                    size: OperandSize::Size64,
+                    rd,
+                    rn: rd.to_reg(),
+                    imm12: Imm12::maybe_from_u64(0).unwrap(),
                 }
                 .emit(sink, emit_info, state);
             }
